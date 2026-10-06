@@ -71,12 +71,13 @@ Your locations, proxy logins included, are saved in `data/locations.json` on you
 - **Use my installed Google Chrome:** uses your normal Chrome install instead of the bundled Chromium. It's a fresh, empty profile, so your own tabs, logins and history aren't touched.
 - **Stay on the page for:** how many seconds to wait after the page loads before the screenshot is taken (0 to 15). This gives pop-ups, cookie banners and slow widgets time to appear.
 - **Wait between visits:** the pause after one tab closes and before the next location starts (0 to 60 seconds).
+- **Repeat every:** run the whole list again every so many minutes until you press "Stop repeating" (minimum 15). Handy for seeing whether the site slows down at certain times of day from each location. Every round is saved under "Past checks".
 
 Each visit is one browser window with one tab. The IP lookup and the visit happen in that same tab, and it's closed before the next location starts.
 
 ## What it deliberately doesn't do
 
-It makes one honest visit per ticked location each time you press the button, then stops. It doesn't loop endlessly or try to look like a human to get past bot detection. Each visit adds `SiteGeoCheck/1.0` to the browser's user agent, so you can spot (and filter out) these visits in your server logs. If you use Google Tag Manager, you can stop your analytics tag firing when the user agent contains `SiteGeoCheck`.
+It makes one honest visit per ticked location per round. Rounds repeat no more often than every 15 minutes, so it works as a monitor rather than a stream of visits. It doesn't loop nonstop or try to look like a human to get past bot detection. Each visit adds `SiteGeoCheck/1.0` to the browser's user agent, so you can spot (and filter out) these visits in your server logs. If you use Google Tag Manager, you can stop your analytics tag firing when the user agent contains `SiteGeoCheck`.
 
 If a location comes back with a "bot check shown" badge, your host or CDN (Cloudflare, usually) challenged the visit. That's useful to know in its own right. Just bear in mind that a real visitor on a normal home connection is far less likely to see that page.
 

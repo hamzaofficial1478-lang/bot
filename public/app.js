@@ -157,6 +157,7 @@ $('show-browser').checked = recall('showBrowser', false);
 $('use-chrome').checked = recall('useChrome', false);
 $('wait-seconds').value = recall('waitSeconds', 6);
 $('gap-seconds').value = recall('gapSeconds', 6);
+$('repeat-minutes').value = recall('repeatMinutes', 0);
 
 $('run-form').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -168,17 +169,20 @@ $('run-form').addEventListener('submit', async (e) => {
     useChrome: $('use-chrome').checked,
     waitSeconds: Number($('wait-seconds').value),
     gapSeconds: Number($('gap-seconds').value),
+    repeatMinutes: Number($('repeat-minutes').value),
   };
   remember('lastUrl', body.url);
   remember('showBrowser', body.showBrowser);
   remember('useChrome', body.useChrome);
   remember('waitSeconds', body.waitSeconds);
   remember('gapSeconds', body.gapSeconds);
+  remember('repeatMinutes', body.repeatMinutes);
 
   try {
     const job = await api('POST', '/api/checks', body);
     renderReport(job);
     poll(job.id);
+    refreshSchedule();
   } catch (err) {
     showError($('run-error'), err.message);
   }
@@ -195,10 +199,33 @@ function poll(id) {
     } catch (err) {
       showError($('run-error'), err.message);
     }
+    pollTimer = null;
     $('run-btn').disabled = false;
     loadHistory();
+    refreshSchedule();
   }, 1200);
 }
+
+// Shows the repeat schedule and picks up each new round the server starts on its own.
+async function refreshSchedule() {
+  const s = await api('GET', '/api/schedule').catch(() => null);
+  $('schedule-note').hidden = !s;
+  if (!s) return;
+  $('schedule-text').textContent = s.nextRunAt
+    ? `Repeating every ${s.repeatMinutes} min. Next round at ${new Date(s.nextRunAt).toLocaleTimeString('en-GB')}.`
+    : `Repeating every ${s.repeatMinutes} min. Round in progress.`;
+  if (!s.nextRunAt && !pollTimer) {
+    const running = (await loadHistory()).find((r) => r.status === 'running');
+    if (running) poll(running.id);
+  }
+}
+
+$('stop-repeat').addEventListener('click', async () => {
+  await api('DELETE', '/api/schedule');
+  refreshSchedule();
+});
+
+setInterval(refreshSchedule, 5000);
 
 // ---- results -------------------------------------------------------------
 
@@ -330,4 +357,5 @@ $('report-list').addEventListener('click', async (e) => {
   const reports = await loadHistory();
   const running = reports.find((r) => r.status === 'running');
   if (running) poll(running.id);
+  refreshSchedule();
 })();

@@ -28,8 +28,13 @@
             <input type="number" id="wait-seconds" min="0" max="15" value="6"> seconds</label>
           <label class="check">Wait between visits
             <input type="number" id="gap-seconds" min="0" max="60" value="6"> seconds</label>
+          <label class="check">Repeat every
+            <input type="number" id="repeat-minutes" min="0" max="1440" value="0"> minutes
+            <small>(0 = run once, minimum 15)</small></label>
         </div>
         <p class="error" id="run-error" hidden></p>
+        <p class="note" id="schedule-note" hidden><span id="schedule-text"></span>
+          <button type="button" class="link" id="stop-repeat">Stop repeating</button></p>
       </form>
     </section>
 
