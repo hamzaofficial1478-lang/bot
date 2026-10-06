@@ -75,7 +75,7 @@ function renderLocations() {
       <input type="checkbox" data-id="${esc(l.id)}" ${selected.has(l.id) ? 'checked' : ''} aria-label="Include ${esc(l.label)}">
       <div class="loc-main">
         <div class="name">${esc(l.label)}</div>
-        <div class="meta">${esc(TARGET_NAMES[l.target])} · ${esc(l.locale)} · ${l.proxy ? `proxy ${esc(maskProxy(l.proxy))}` : 'current connection / VPN'}</div>
+        <div class="meta">${esc(TARGET_NAMES[l.target])} · ${esc(l.locale)} · ${l.proxy ? `proxy ${esc(maskProxy(l.proxy))}` : 'current connection / VPN'}${l.vpnCommand ? ` · switches VPN: ${esc(l.vpnCommand)}` : ''}</div>
       </div>
       <button type="button" class="link" data-edit="${esc(l.id)}">Edit</button>
       <button type="button" class="link" data-delete="${esc(l.id)}">Delete</button>
@@ -98,6 +98,7 @@ function openLocationForm(loc) {
   $('loc-target').value = loc ? loc.target : 'US';
   $('loc-locale').value = loc ? loc.locale : 'en-US';
   $('loc-proxy').value = loc ? loc.proxy : '';
+  $('loc-vpn').value = (loc && loc.vpnCommand) || '';
   showError($('loc-error'), '');
   $('loc-form').hidden = false;
   $('loc-label').focus();
@@ -117,6 +118,7 @@ $('loc-form').addEventListener('submit', async (e) => {
     target: $('loc-target').value,
     locale: $('loc-locale').value,
     proxy: $('loc-proxy').value,
+    vpnCommand: $('loc-vpn').value,
   };
   try {
     const saved = editingId
@@ -153,7 +155,8 @@ $('loc-list').addEventListener('click', async (e) => {
 $('url').value = recall('lastUrl', '');
 $('show-browser').checked = recall('showBrowser', false);
 $('use-chrome').checked = recall('useChrome', false);
-$('wait-seconds').value = recall('waitSeconds', 5);
+$('wait-seconds').value = recall('waitSeconds', 6);
+$('gap-seconds').value = recall('gapSeconds', 6);
 
 $('run-form').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -164,11 +167,13 @@ $('run-form').addEventListener('submit', async (e) => {
     showBrowser: $('show-browser').checked,
     useChrome: $('use-chrome').checked,
     waitSeconds: Number($('wait-seconds').value),
+    gapSeconds: Number($('gap-seconds').value),
   };
   remember('lastUrl', body.url);
   remember('showBrowser', body.showBrowser);
   remember('useChrome', body.useChrome);
   remember('waitSeconds', body.waitSeconds);
+  remember('gapSeconds', body.gapSeconds);
 
   try {
     const job = await api('POST', '/api/checks', body);
@@ -236,6 +241,7 @@ function renderResult(r, reportId) {
 
   let body = `<p class="line muted">${esc(r.proxy || 'Current connection / VPN')} · ${esc(r.locale)}</p>`;
   if (where) body += `<p class="line"><strong>Seen from:</strong> ${where} ${regionBadge(r)}</p>`;
+  if (r.warning) body += `<p class="line note">${esc(r.warning)}</p>`;
   if (r.error) body += `<p class="line error">${esc(r.error)}</p>`;
 
   if (r.status === 'done') {

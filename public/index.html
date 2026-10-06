@@ -25,7 +25,9 @@
           <label class="check"><input type="checkbox" id="show-browser"> Show the browser while it runs</label>
           <label class="check"><input type="checkbox" id="use-chrome"> Use my installed Google Chrome</label>
           <label class="check">Stay on the page for
-            <input type="number" id="wait-seconds" min="0" max="15" value="5"> seconds</label>
+            <input type="number" id="wait-seconds" min="0" max="15" value="6"> seconds</label>
+          <label class="check">Wait between visits
+            <input type="number" id="gap-seconds" min="0" max="60" value="6"> seconds</label>
         </div>
         <p class="error" id="run-error" hidden></p>
       </form>
@@ -37,7 +39,8 @@
         <button type="button" id="add-loc-btn">Add location</button>
       </div>
       <p class="hint">Tick the locations to check from. A location with no proxy uses whatever your VPN is
-        connected to at that moment, so switch the VPN server and run again to try another country.</p>
+        connected to at that moment. Give a location a VPN switch command and the app changes server
+        for you before that visit: one tab per IP, closed before the next one opens.</p>
       <ul id="loc-list" class="loc-list"></ul>
 
       <form id="loc-form" class="loc-form" hidden novalidate>
@@ -73,6 +76,10 @@
           <label class="wide">Proxy (optional)
             <input id="loc-proxy" type="text" placeholder="http://user:pass@us-nyc.yourprovider.com:8080" spellcheck="false">
             <small>Leave empty to use your current connection / VPN. Also accepts host:port:user:pass.</small>
+          </label>
+          <label class="wide">VPN switch command (optional)
+            <input id="loc-vpn" type="text" placeholder='"C:\Program Files\NordVPN\nordvpn.exe" -c -n "United States #3710"' spellcheck="false">
+            <small>Run before this visit to move your VPN to a new server. The app waits until your IP changes, then opens the site. See the README for examples.</small>
           </label>
         </div>
         <p class="error" id="loc-error" hidden></p>

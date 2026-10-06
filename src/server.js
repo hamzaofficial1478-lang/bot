@@ -8,6 +8,17 @@ const { runJob } = require('./checker');
 const PORT = Number(process.env.PORT) || 3000;
 const app = express();
 
+// Only answer the dashboard itself. Locations can hold VPN commands that get run on this
+// machine, so a web page you happen to visit must not be able to reach the API (CSRF / DNS rebinding).
+const OWN_HOSTS = [`localhost:${PORT}`, `127.0.0.1:${PORT}`];
+app.use((req, res, next) => {
+  const { host, origin } = req.headers;
+  if (!OWN_HOSTS.includes(host) || (origin && !OWN_HOSTS.some((h) => origin === `http://${h}`))) {
+    return res.status(403).send('Forbidden');
+  }
+  next();
+});
+
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
 app.use('/reports', express.static(store.REPORTS_DIR));
@@ -90,13 +101,15 @@ app.post('/api/checks', (req, res) => {
   const locations = store.loadLocations().filter((l) => ids.includes(l.id));
   if (!locations.length) return sendError(res, 400, new Error('Tick at least one location to check from.'));
 
-  const waitSeconds = Math.min(15, Math.max(0, Math.round(Number(req.body.waitSeconds) || 0)));
+  const seconds = (v, max) => Math.min(max, Math.max(0, Math.round(Number(v) || 0)));
+  const waitSeconds = seconds(req.body.waitSeconds, 15);
+  const gapSeconds = seconds(req.body.gapSeconds, 60);
   const job = {
     id: newJobId(url),
     url,
     status: 'running',
     startedAt: new Date().toISOString(),
-    settings: { showBrowser: !!req.body.showBrowser, useChrome: !!req.body.useChrome, waitSeconds },
+    settings: { showBrowser: !!req.body.showBrowser, useChrome: !!req.body.useChrome, waitSeconds, gapSeconds },
     // Only masked proxy details ever go into the job/report.
     results: locations.map((l) => ({
       locationId: l.id,

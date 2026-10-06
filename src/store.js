@@ -35,7 +35,8 @@ function cleanLocation(input = {}) {
   const locale = /^[a-z]{2}-[A-Z]{2}$/.test(input.locale) ? input.locale : 'en-US';
   const proxy = String(input.proxy || '').trim();
   parseProxy(proxy); // throws a readable error if the format is off
-  return { label, target, locale, proxy };
+  const vpnCommand = String(input.vpnCommand || '').trim().slice(0, 500);
+  return { label, target, locale, proxy, vpnCommand };
 }
 
 function addLocation(input) {

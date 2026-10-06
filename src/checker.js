@@ -1,5 +1,7 @@
 const path = require('path');
 const crypto = require('crypto');
+const { promisify } = require('util');
+const execAsync = promisify(require('child_process').exec);
 const { chromium } = require('playwright');
 const { parseProxy } = require('./proxy');
 const store = require('./store');
@@ -9,6 +11,7 @@ const store = require('./store');
 const TAG = 'SiteGeoCheck/1.0';
 const VIEWPORT = { width: 1366, height: 768 };
 const PAGE_TIMEOUT = 45000;
+const VPN_WAIT = 45000;
 
 const EUROPE = new Set([
   'AD', 'AL', 'AT', 'BA', 'BE', 'BG', 'CH', 'CY', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR', 'GB',
@@ -68,33 +71,61 @@ function friendlyError(err) {
   return msg.split('\n')[0].slice(0, 300);
 }
 
-async function lookupExitIp(context) {
-  const page = await context.newPage();
-  try {
-    for (const svc of GEO_SERVICES) {
-      try {
-        const res = await page.goto(svc.url, { timeout: 15000 });
-        if (!res || !res.ok()) continue;
-        const info = svc.map(await res.json());
-        if (info && info.ip) return info;
-      } catch {
-        // fall through to the next lookup service
-      }
+// Looks up the exit IP in the same tab that then visits the site, so each visit is one tab.
+async function lookupExitIp(page) {
+  for (const svc of GEO_SERVICES) {
+    try {
+      const res = await page.goto(svc.url, { timeout: 15000 });
+      if (!res || !res.ok()) continue;
+      const info = svc.map(await res.json());
+      if (info && info.ip) return info;
+    } catch {
+      // fall through to the next lookup service
     }
-    return null;
-  } finally {
-    await page.close();
   }
+  return null;
 }
 
-async function defaultUserAgent(browser) {
-  const ctx = await browser.newContext();
-  try {
-    const page = await ctx.newPage();
-    return await page.evaluate(() => navigator.userAgent);
-  } finally {
-    await ctx.close();
+// Same lookup from Node itself, used to notice when the VPN has finished switching.
+async function currentIp() {
+  for (const svc of GEO_SERVICES) {
+    try {
+      const res = await fetch(svc.url, { signal: AbortSignal.timeout(5000) });
+      const info = res.ok && svc.map(await res.json());
+      if (info && info.ip) return info.ip;
+    } catch {
+      // VPN mid-reconnect or service down; try the next one
+    }
   }
+  return null;
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Runs the location's VPN command, then waits until the public IP actually changes.
+// Returns a warning string if it never did, so the visit still happens but is flagged.
+async function switchVpn(command) {
+  const before = await currentIp();
+  try {
+    await execAsync(command, { timeout: 60000, windowsHide: true });
+  } catch (err) {
+    const why = String(err.stderr || err.stdout || err.message).trim().split('\n')[0];
+    throw new Error(`The VPN command failed: ${why.slice(0, 200)}`);
+  }
+  for (const end = Date.now() + VPN_WAIT; Date.now() < end;) {
+    await sleep(2000);
+    const ip = await currentIp();
+    if (ip && ip !== before) return null;
+  }
+  return `The IP didn't change within ${VPN_WAIT / 1000}s of the VPN command, so this visit may have used the previous server.`;
+}
+
+// Reads the browser's real UA via a browser-level CDP session (no extra window) and tags it.
+async function taggedUserAgent(browser) {
+  const cdp = await browser.newBrowserCDPSession();
+  const { userAgent } = await cdp.send('Browser.getVersion');
+  await cdp.detach();
+  return `${userAgent} ${TAG}`;
 }
 
 function redirectChain(response) {
@@ -212,13 +243,13 @@ async function checkLocation({ url, location, settings, outDir, index }) {
       proxy: parseProxy(location.proxy),
     });
 
-    const userAgent = `${await defaultUserAgent(browser)} ${TAG}`;
+    const userAgent = await taggedUserAgent(browser);
     const context = await browser.newContext({ viewport: VIEWPORT, locale: location.locale, userAgent });
+    const page = await context.newPage();
 
-    result.exit = await lookupExitIp(context);
+    result.exit = await lookupExitIp(page);
     result.regionMatch = result.exit ? matchesTarget(location.target, result.exit.countryCode) : null;
 
-    const page = await context.newPage();
     await page.addInitScript(installObservers);
 
     const net = { requests: 0, bytes: 0, failed: [], badStatus: [] };
@@ -305,12 +336,21 @@ async function runJob(job, locations) {
   store.saveReport(job);
 
   for (let i = 0; i < locations.length; i++) {
+    if (i > 0 && job.settings.gapSeconds) await sleep(job.settings.gapSeconds * 1000);
+
     const base = job.results[i];
     job.results[i] = { ...base, status: 'running' };
     store.saveReport(job);
 
-    const outcome = await checkLocation({ url: job.url, location: locations[i], settings: job.settings, outDir, index: i });
-    job.results[i] = { ...base, ...outcome };
+    let warning = null;
+    let outcome;
+    try {
+      if (locations[i].vpnCommand) warning = await switchVpn(locations[i].vpnCommand);
+      outcome = await checkLocation({ url: job.url, location: locations[i], settings: job.settings, outDir, index: i });
+    } catch (err) {
+      outcome = { status: 'failed', error: err.message };
+    }
+    job.results[i] = { ...base, ...outcome, ...(warning && { warning }) };
     store.saveReport(job);
   }
 
@@ -320,4 +360,4 @@ async function runJob(job, locations) {
   store.saveReport(job);
 }
 
-module.exports = { runJob };
+module.exports = { runJob, switchVpn };

@@ -6,7 +6,8 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js --open",
-    "setup": "npm install && npx playwright install chromium"
+    "setup": "npm install && npx playwright install chromium",
+    "test": "node --test"
   },
   "engines": {
     "node": ">=18"
