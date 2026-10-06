@@ -186,3 +186,4 @@ dialog .close {
   .result { grid-template-columns: 1fr; }
   .row { flex-direction: column; align-items: stretch; }
 }
+.auto-fill { align-items: center; margin: 0 0 6px; }

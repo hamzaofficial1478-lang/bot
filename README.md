@@ -34,6 +34,8 @@ There are two ways to do it, and you can mix them.
 
 **With your VPN.** The built-in "My current connection (VPN)" location uses whatever your computer is connected to. Connect your VPN to, say, New York, run a check, then switch to Toronto and run again, then London, and so on. Every run is saved under "Past checks", so you can flick between them afterwards. The "Seen from" line tells you exactly where the site thought you were.
 
+**Let the app fill in the servers for you (NordVPN).** Connect NordVPN to any country, then press "Fill in servers from my VPN's country" and choose how many. The app works out which country you're in, fetches NordVPN's real server list and adds one server per city (biggest cities first), each with its VPN command ready to go. Do it again after switching to Canada or a European country, and one run will move between all of them.
+
 **Let the app switch your VPN for you.** Give each location a "VPN switch command". Before that visit, the app runs the command, waits until your public IP has actually changed, opens the site in a single tab, stays for your chosen number of seconds, then closes it. It waits between visits before switching to the next server. So if you add five US servers and tick them all, you get five visits from five different US IPs, one tab at a time. If the IP hasn't changed within 45 seconds, the visit still goes ahead but gets a warning, so you know it may have used the previous server.
 
 The command depends on your VPN app. These are the documented ones I know of, but I couldn't run them from here, so double-check the wording against your provider's help pages:

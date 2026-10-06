@@ -46,6 +46,13 @@
       <p class="hint">Tick the locations to check from. A location with no proxy uses whatever your VPN is
         connected to at that moment. Give a location a VPN switch command and the app changes server
         for you before that visit: one tab per IP, closed before the next one opens.</p>
+      <div class="options auto-fill">
+        <button type="button" id="auto-btn" class="primary">Fill in servers from my VPN's country</button>
+        <label class="check">How many <input type="number" id="auto-count" min="1" max="20" value="6"></label>
+      </div>
+      <p class="hint">Connect NordVPN to any country first. The app works out which country it is and adds one
+        real server per city, each with its own IP.</p>
+      <p class="error" id="auto-error" hidden></p>
       <ul id="loc-list" class="loc-list"></ul>
 
       <form id="loc-form" class="loc-form" hidden novalidate>

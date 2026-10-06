@@ -105,6 +105,23 @@ function openLocationForm(loc) {
 }
 
 $('add-loc-btn').addEventListener('click', () => openLocationForm(null));
+
+$('auto-btn').addEventListener('click', async () => {
+  const btn = $('auto-btn');
+  const label = btn.textContent;
+  showError($('auto-error'), '');
+  btn.disabled = true;
+  btn.textContent = 'Finding servers…';
+  try {
+    const added = await api('POST', '/api/locations/auto', { count: Number($('auto-count').value) });
+    remember('selectedLocations', [...selectedIds(), ...added.map((l) => l.id)]);
+    await loadLocations();
+  } catch (err) {
+    showError($('auto-error'), err.message);
+  }
+  btn.disabled = false;
+  btn.textContent = label;
+});
 $('loc-cancel').addEventListener('click', () => { $('loc-form').hidden = true; });
 
 $('loc-target').addEventListener('change', (e) => {

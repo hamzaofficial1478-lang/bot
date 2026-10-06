@@ -86,13 +86,13 @@ async function lookupExitIp(page) {
   return null;
 }
 
-// Same lookup from Node itself, used to notice when the VPN has finished switching.
-async function currentIp() {
+// Same lookup from Node itself: tells us when the VPN has switched, and which country it's on.
+async function currentLocation() {
   for (const svc of GEO_SERVICES) {
     try {
       const res = await fetch(svc.url, { signal: AbortSignal.timeout(5000) });
       const info = res.ok && svc.map(await res.json());
-      if (info && info.ip) return info.ip;
+      if (info && info.ip) return info;
     } catch {
       // VPN mid-reconnect or service down; try the next one
     }
@@ -105,7 +105,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // Runs the location's VPN command, then waits until the public IP actually changes.
 // Returns a warning string if it never did, so the visit still happens but is flagged.
 async function switchVpn(command) {
-  const before = await currentIp();
+  const before = (await currentLocation())?.ip;
   try {
     await execAsync(command, { timeout: 60000, windowsHide: true });
   } catch (err) {
@@ -114,8 +114,8 @@ async function switchVpn(command) {
   }
   for (const end = Date.now() + VPN_WAIT; Date.now() < end;) {
     await sleep(2000);
-    const ip = await currentIp();
-    if (ip && ip !== before) return null;
+    const now = await currentLocation();
+    if (now && now.ip !== before) return null;
   }
   return `The IP didn't change within ${VPN_WAIT / 1000}s of the VPN command, so this visit may have used the previous server.`;
 }
@@ -360,4 +360,49 @@ async function runJob(job, locations) {
   store.saveReport(job);
 }
 
-module.exports = { runJob, switchVpn };
+const NORD_API = 'https://api.nordvpn.com/v1/servers';
+const LOCALES = {
+  US: 'en-US', CA: 'en-CA', GB: 'en-GB', IE: 'en-IE', DE: 'de-DE', FR: 'fr-FR',
+  ES: 'es-ES', IT: 'it-IT', NL: 'nl-NL', PL: 'pl-PL', SE: 'sv-SE',
+};
+
+async function nordJson(url) {
+  const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+  if (!res.ok) throw new Error(`NordVPN's server list didn't respond (HTTP ${res.status}). Try again in a minute.`);
+  return res.json();
+}
+
+// Server names end up inside a shell command, so only accept the shapes NordVPN actually uses.
+function nordCommand(server) {
+  if (!/^[A-Za-z .]+ #\d+$/.test(server.name) || !/^[a-z]{2}\d+\.nordvpn\.com$/.test(server.hostname)) return null;
+  return process.platform === 'win32'
+    ? `"C:\\Program Files\\NordVPN\\nordvpn.exe" -c -n "${server.name}"`
+    : `nordvpn connect ${server.hostname.split('.')[0]}`;
+}
+
+// Builds `count` locations in whatever country the VPN is on right now: one real NordVPN
+// server per city, biggest cities first, wrapping round for a second server per city if needed.
+async function nordvpnLocations(count) {
+  const here = await currentLocation();
+  if (!here || !here.countryCode) throw new Error("Couldn't work out which country your VPN is on. Is it connected?");
+  const country = (await nordJson(`${NORD_API}/countries`)).find((c) => c.code === here.countryCode);
+  if (!country) throw new Error(`NordVPN doesn't list any servers in ${here.country}.`);
+
+  const cities = [...country.cities].sort((a, b) => b.serverCount - a.serverCount);
+  const perCity = new Map();
+  for (let i = 0; i < count; i++) perCity.set(cities[i % cities.length], (perCity.get(cities[i % cities.length]) || 0) + 1);
+
+  const code = here.countryCode;
+  const target = code === 'US' || code === 'CA' ? code : EUROPE.has(code) ? 'EU' : 'ANY';
+  const locations = [];
+  for (const [city, n] of perCity) {
+    const servers = await nordJson(`${NORD_API}/recommendations?filters[country_city_id]=${city.id}&limit=${n}`);
+    for (const server of servers) {
+      const vpnCommand = nordCommand(server);
+      if (vpnCommand) locations.push({ label: `${server.name} – ${city.name}`, target, locale: LOCALES[code] || 'en-US', vpnCommand });
+    }
+  }
+  return locations;
+}
+
+module.exports = { runJob, switchVpn, nordvpnLocations };

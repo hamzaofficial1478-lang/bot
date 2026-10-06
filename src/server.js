@@ -3,7 +3,7 @@ const { spawn } = require('child_process');
 const express = require('express');
 const store = require('./store');
 const { maskProxy } = require('./proxy');
-const { runJob } = require('./checker');
+const { runJob, nordvpnLocations } = require('./checker');
 
 const PORT = Number(process.env.PORT) || 3000;
 const app = express();
@@ -106,6 +106,16 @@ app.post('/api/locations', (req, res) => {
     res.status(201).json(store.addLocation(req.body));
   } catch (err) {
     sendError(res, 400, err);
+  }
+});
+
+app.post('/api/locations/auto', async (req, res) => {
+  try {
+    const count = Math.min(20, Math.max(1, Math.round(Number(req.body.count) || 6)));
+    const added = (await nordvpnLocations(count)).map((l) => store.addLocation(l));
+    res.status(201).json(added);
+  } catch (err) {
+    sendError(res, 502, err);
   }
 });
 
