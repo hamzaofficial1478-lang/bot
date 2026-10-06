@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Site Geo Check</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <h1>Site Geo Check</h1>
+    <p>See how your website loads and looks for visitors in the USA, Canada and Europe.</p>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Your website</h2>
+      <form id="run-form" novalidate>
+        <label for="url">Website link</label>
+        <div class="row">
+          <input id="url" type="text" placeholder="https://yourwebsite.com" autocomplete="url" spellcheck="false">
+          <button type="submit" id="run-btn" class="primary">Run check</button>
+        </div>
+        <div class="options">
+          <label class="check"><input type="checkbox" id="show-browser"> Show the browser while it runs</label>
+          <label class="check"><input type="checkbox" id="use-chrome"> Use my installed Google Chrome</label>
+          <label class="check">Stay on the page for
+            <input type="number" id="wait-seconds" min="0" max="15" value="5"> seconds</label>
+        </div>
+        <p class="error" id="run-error" hidden></p>
+      </form>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Locations</h2>
+        <button type="button" id="add-loc-btn">Add location</button>
+      </div>
+      <p class="hint">Tick the locations to check from. A location with no proxy uses whatever your VPN is
+        connected to at that moment, so switch the VPN server and run again to try another country.</p>
+      <ul id="loc-list" class="loc-list"></ul>
+
+      <form id="loc-form" class="loc-form" hidden novalidate>
+        <h3 id="loc-form-title">Add location</h3>
+        <div class="grid">
+          <label>Name
+            <input id="loc-label" type="text" placeholder="USA – New York" maxlength="80">
+          </label>
+          <label>Should be in
+            <select id="loc-target">
+              <option value="US">USA</option>
+              <option value="CA">Canada</option>
+              <option value="EU">Europe</option>
+              <option value="ANY">Anywhere</option>
+            </select>
+          </label>
+          <label>Browser language
+            <select id="loc-locale">
+              <option value="en-US">English (US)</option>
+              <option value="en-CA">English (Canada)</option>
+              <option value="fr-CA">French (Canada)</option>
+              <option value="en-GB">English (UK)</option>
+              <option value="en-IE">English (Ireland)</option>
+              <option value="de-DE">German</option>
+              <option value="fr-FR">French</option>
+              <option value="es-ES">Spanish</option>
+              <option value="it-IT">Italian</option>
+              <option value="nl-NL">Dutch</option>
+              <option value="pl-PL">Polish</option>
+              <option value="sv-SE">Swedish</option>
+            </select>
+          </label>
+          <label class="wide">Proxy (optional)
+            <input id="loc-proxy" type="text" placeholder="http://user:pass@us-nyc.yourprovider.com:8080" spellcheck="false">
+            <small>Leave empty to use your current connection / VPN. Also accepts host:port:user:pass.</small>
+          </label>
+        </div>
+        <p class="error" id="loc-error" hidden></p>
+        <div class="row end">
+          <button type="button" id="loc-cancel">Cancel</button>
+          <button type="submit" class="primary">Save location</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card" id="results" hidden>
+      <div class="card-head">
+        <h2>Results</h2>
+        <span id="results-status" class="muted"></span>
+      </div>
+      <p id="results-url" class="muted"></p>
+      <p id="variant-note" class="note" hidden>Different locations were served different page text (marked
+        A, B, C below). That could be geo-targeting, or just content that rotates on every load.</p>
+      <div id="result-list" class="result-list"></div>
+    </section>
+
+    <section class="card">
+      <h2>Past checks</h2>
+      <ul id="report-list" class="report-list"></ul>
+    </section>
+  </main>
+
+  <dialog id="shot-dialog">
+    <form method="dialog"><button class="close" aria-label="Close">×</button></form>
+    <img id="shot-img" alt="">
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "name": "site-geo-check",
+  "version": "1.0.0",
+  "private": true,
+  "description": "See how your website loads and looks from the USA, Canada and Europe, through your VPN or location-specific proxies.",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js --open",
+    "setup": "npm install && npx playwright install chromium"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "playwright": "^1.56.1"
+  }
+}

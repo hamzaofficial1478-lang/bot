@@ -1,0 +1,7 @@
+node_modules/
+
+# Your saved locations (proxy logins live here) and every report/screenshot.
+data/
+
+.DS_Store
+Thumbs.db
